@@ -37,4 +37,4 @@ class RefCount():
 # Basic test code
 if __name__ == '__main__':
     refCount = RefCount('Example')
-    print refCount
+    print(refCount)

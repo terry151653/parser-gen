@@ -5,8 +5,7 @@
 from abc import ABCMeta, abstractmethod
 import Header
 
-class DAGNode(object):
-    __metaclass__ = ABCMeta
+class DAGNode(object, metaclass=ABCMeta):
     """A node in a DAG"""
     
     def __init__(self, hdr, inst, length):
@@ -63,11 +62,16 @@ class DAGNode(object):
         #return '%s:%03d' % (self.getName(), self.inst)
         return self._cmpName
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
+        return isinstance(other, DAGNode) and self.getCmpName() == other.getCmpName()
+
+    def __lt__(self, other):
         if isinstance(other, DAGNode):
-            return cmp(self.getCmpName(), other.getCmpName())
-        else:
-            return -1
+            return self.getCmpName() < other.getCmpName()
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.getCmpName())
 
 
 # Basic test code
@@ -78,4 +82,4 @@ if __name__ == '__main__':
 
     hdr = Header.Header('TestHeader')
     node = MyDAGNode(hdr, 1, 0)
-    print node
+    print(node)

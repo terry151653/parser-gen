@@ -36,5 +36,5 @@ class Field():
 # Basic test code
 if __name__ == '__main__':
     hdr = Field('TestField')
-    print hdr
+    print(hdr)
 

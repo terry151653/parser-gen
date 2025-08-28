@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
+import os
+import sys
+
+# Allow running without installing the library as a package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib", "python"))
+
 from Header import Header
 from HeaderLib import exploreHeader, readHeaders, DONE
 from Field import Field
 import string
-import sys
 import re
 import argparse
 from pyparsing import *
@@ -29,10 +34,10 @@ def resetVars():
 def matchToVerilog(match):
     """Concert a match array pair to a verilog string"""
     matchStr = "%d'b" % (len(match[0]) * 8)
-    for j in xrange(len(match[0])):
+    for j in range(len(match[0])):
         maskByte = match[0][j]
         dataByte = match[1][j]
-        for k in xrange(8):
+        for k in range(8):
             if maskByte & (0x80 >> k):
                 matchStr += "%d" % ((dataByte & (0x80 >> k)) >> (7 - k))
             else:
@@ -52,7 +57,7 @@ def processHdrStart(hdr, nxtHdr, headers, hdrInfo, pos = 0, hdrSeq = []):
         exploreHeader(nxtHdr, headers, phsFunc)
     else:
         hdrSeqStr = ""
-        for i in xrange(0, len(hdrSeq), 3):
+        for i in range(0, len(hdrSeq), 3):
             hdrSeqStr += "%s:%d:%d==" % (hdrSeq[i], hdrSeq[i+1], hdrSeq[i+2])
         if hdrSeqStr not in hdrSeqStrs:
             hdrSeqStrs.add(hdrSeqStr)
@@ -78,7 +83,7 @@ def generateJSONObject(hdr, headers, hdrInfo):
             hdrDict['len'] = 0
             hdrDict['lenBytes'] = hdrInfo.lenBytes
             lenMap = {}
-            for i in xrange(len(hdrInfo.lengths)):
+            for i in range(len(hdrInfo.lengths)):
                 lenMatch = matchToVerilog(hdrInfo.lenMatch[i])
                 length = hdrInfo.lengths[i]
                 lenMap[lenMatch] = length
@@ -89,7 +94,7 @@ def generateJSONObject(hdr, headers, hdrInfo):
         if len(hdrInfo.nxtHdrs) > 0:
             hdrDict['nxtHdrBytes'] = hdrInfo.nxtHdrBytes
             nxtHdrMap = {}
-            for i in xrange(len(hdrInfo.nxtHdrs)):
+            for i in range(len(hdrInfo.nxtHdrs)):
                 nxtHdrMatch = matchToVerilog(hdrInfo.nxtHdrMatch[i])
                 nxtHdr = hdrInfo.nxtHdrs[i]
                 if nxtHdr:
@@ -127,12 +132,12 @@ def generateJSON(headerList, headers, dstFile = None):
     exploreHeader(headerList[0], headers, generateJSONObject, False)
 
     if dstFile is None:
-        print json.dumps(indent = 4, obj =
+        print(json.dumps(indent = 4, obj =
                 {
                     'firstHdr': orderedHdrs[0],
                     'headers': simpleHdrs,
                     'hdrSeqs': hdrSeqs,
-                })
+                }))
     else:
         f = open(dstFile, 'w')
         json.dump(indent = 4, fp = f, obj =

@@ -104,32 +104,17 @@ class DAGChain(object):
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, DAGChain):
-            if self.__hash__() == other.__hash__():
-                return 0
-
-            for i in xrange(min(len(self.chain), len(other.chain))):
-                c = cmp(self.chain[i], other.chain[i])
-                if c != 0:
-                    return c
-
-            if len(self.chain) < len(other.chain):
-                return -1
-            elif len(self.chain) > len(other.chain):
-                return 1
-
-            c = cmp(self.done, other.done)
-            if c != 0:
-                return c
-
-            c = cmp(self.patterns, other.patterns)
-            if c != 0:
-                return c
-
-            return 0
-        else:
-            return -1
+            for i in range(min(len(self.chain), len(other.chain))):
+                if self.chain[i] != other.chain[i]:
+                    return self.chain[i] < other.chain[i]
+            if len(self.chain) != len(other.chain):
+                return len(self.chain) < len(other.chain)
+            if self.done != other.done:
+                return self.done < other.done
+            return self.patterns < other.patterns
+        return NotImplemented
 
     def chainPop(self):
         """Pop a node from the end of the chain"""
@@ -249,7 +234,7 @@ class DAGChain(object):
             chainCopy.patterns = self.patterns
         else:
             chainCopy.calcPatterns()
-        print "ChainCopy: %s   (Depth: %d)" % (chainCopy, depth)
+        print("ChainCopy: %s   (Depth: %d)" % (chainCopy, depth))
 
         return chainCopy
 
@@ -274,7 +259,7 @@ class DAGChain(object):
             nodeLookupBytes = node.dagNode.getDecisionBytes()
             for lb in nodeLookupBytes:
                 if lb >= node.startPos and lb < node.startPos + node.read:
-                    lookupBytes.add(lb - node.startPos + offset)
+                    lookupBytes.add(int(lb - node.startPos + offset))
             offset += node.consumed
 
         lookupBytes = sorted(lookupBytes)
@@ -644,7 +629,7 @@ class DAGChain(object):
         # If we start with a barrier node, then we need to add subchains
         # for every chain up until the first containing a decision byte
         if len(self.chain) > 0: # and isinstance(self.chain[0].dagNode, BarrierNode):
-            for i in xrange(0, len(self.chain)):
+            for i in range(0, len(self.chain)):
                 cn = self.chain[i]
                 cnLookupBytes = cn.dagNode.getDecisionBytes()
                 cnLookupBytes = [lb - self.chain[i].startPos for lb in cnLookupBytes]
@@ -688,7 +673,7 @@ class DAGChain(object):
 
             seenLookupBytes = False
             firstDone = False
-            for i in xrange(len(self.chain)):
+            for i in range(len(self.chain)):
                 cn = self.chain[i]
                 cnLookupBytes = cn.dagNode.getDecisionBytes()
                 cnLookupBytes = [lb - self.chain[i].startPos for lb in cnLookupBytes]
@@ -832,7 +817,7 @@ class DAGChain(object):
 
     def getLookupByteValues(self, trim=True):
         """Return all sets of lookup byte values"""
-        print "getLookupByteValues:", self, trim
+        print("getLookupByteValues:", self, trim)
         #lookupBytes = ['']
         offset = 0
         prevOffset = 0
@@ -930,9 +915,10 @@ class DAGChain(object):
             #            newLookupBytes.append(lb + hlb)
             #    lookupBytes = newLookupBytes
 
-            prevHdrLookupBytes = map(lambda x : x + offset, prevHdrLookupBytes)
-            hdrLookupBytes = map(lambda x : x + offset, hdrLookupBytes)
+            prevHdrLookupBytes = [x + offset for x in prevHdrLookupBytes]
+            hdrLookupBytes = [x + offset for x in hdrLookupBytes]
             lookupBytes.extend(hdrLookupBytes)
+            lookupBytes = [int(lb) for lb in lookupBytes]
             if len(hdrLookupValues) > 0:
                 newLookupValues = []
                 for lv in lookupValues:
@@ -949,8 +935,8 @@ class DAGChain(object):
 
         # Assemble the lookup bytes
         if len(lookupBytes) > 0:
-            lbMin = min(lookupBytes)
-            lbMax = max(lookupBytes)
+            lbMin = int(min(lookupBytes))
+            lbMax = int(max(lookupBytes))
             offset = 0
             if lbMin < 0 and not trim:
                 offset = -lbMin
@@ -959,11 +945,11 @@ class DAGChain(object):
             sortedLookupBytes = sorted(set(lookupBytes))
             newLookupValues = []
             for lv in lookupValues:
-                mask = [0 for x in xrange(lbMax + 1)]
-                match = [0 for x in xrange(lbMax + 1)]
+                mask = [0 for x in range(lbMax + 1)]
+                match = [0 for x in range(lbMax + 1)]
 
-                for i in xrange(len(lookupBytes)):
-                    dest = lookupBytes[i]
+                for i in range(len(lookupBytes)):
+                    dest = int(lookupBytes[i])
                     dest += offset
                     if offset >= 0:
                         mask[dest] |= lv[0][i]
@@ -980,7 +966,7 @@ class DAGChain(object):
         else:
             lookupValues = ['']
 
-        print "getLookupByteValues (DONE):", self, lookupValues
+        print("getLookupByteValues (DONE):", self, lookupValues)
         #print lb2, lm2
 
 
@@ -998,4 +984,4 @@ if __name__ == '__main__':
     chain.add(chainNode1)
     chain.add(chainNode2)
 
-    print chain
+    print(chain)

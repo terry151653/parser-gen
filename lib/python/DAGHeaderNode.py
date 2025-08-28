@@ -46,4 +46,4 @@ if __name__ == '__main__':
     hdr = Header.Header('TestHeader')
     hdr.addField('test', 8)
     node = HeaderNode(hdr, 1)
-    print node
+    print(node)

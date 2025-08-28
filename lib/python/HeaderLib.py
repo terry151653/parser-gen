@@ -59,7 +59,7 @@ def getHeaderLengths(hdr):
             lengths = []
             for lenFieldValSet in lenFieldVals:
                 valMap = {}
-                for i in xrange(len(lenFields)):
+                for i in range(len(lenFields)):
                     valMap[lenFields[i]] = lenFieldValSet[i]
                 lengths.append(hdr.doLengthCalc(valMap))
 
@@ -148,7 +148,7 @@ def exploreHeader(hdr, headers, callback, callPerLenNxtHdr = True):
                 fieldMatch = hdr.getFieldByteContentsSingle(fields, vals, fieldBytes, fieldPos)
 
                 # Walk through all of the possible lengths
-                for i in xrange(len(lengths)):
+                for i in range(len(lengths)):
                     length = lengths[i]
                     if lenIsVariable:
                         match = hdr.mergeContents(mergedFieldBytes, map1, map2, fieldMatch, lenContent[i])
@@ -184,7 +184,7 @@ def exploreHeader(hdr, headers, callback, callPerLenNxtHdr = True):
     else:
         # Case: no next header
         if callPerLenNxtHdr:
-            for i in xrange(len(lengths)):
+            for i in range(len(lengths)):
                 length = lengths[i]
                 if lenIsVariable:
                     match = lenContent[i]
@@ -234,13 +234,13 @@ if __name__ == "__main__":
         exploreHeader(headerList[0], headers, exploreHdrChain)
 
         for path in sorted(finalPaths):
-            print path
+            print(path)
 
 
     seenHdrs = set()
     def exploreHdrChainMerged(hdr, headers, hdrInfo):
         if not hdr.name in seenHdrs:
-            print hdr.name
+            print(hdr.name)
             seenHdrs.add(hdr.name)
 
             for nxtHdr in hdrInfo.nxtHdrs:
@@ -258,13 +258,13 @@ if __name__ == "__main__":
     args = my_parser.parse_args()
 
     (headerList, headers) = readHeaders(args.hdr_file)
-    print "List of headers (from walk)"
-    print "==========================="
+    print("List of headers (from walk)")
+    print("===========================")
     exampleHeaderWalkMerged(headerList[0], headers)
-    print "\n"
+    print("\n")
 
-    print "Header paths"
-    print "============"
+    print("Header paths")
+    print("============")
     exampleHeaderWalk(headerList[0], headers)
 
 def crackKey(hdr, key, fields):
@@ -306,7 +306,7 @@ def getHeaderBNF():
     global headerBNF
 
     if not headerBNF:
-        LBRACE, RBRACE, COLON, COMMA, EQ, LPAREN, RPAREN = map(Suppress, "{}:,=()")
+        LBRACE, RBRACE, COLON, COMMA, EQ, LPAREN, RPAREN = list(map(Suppress, "{}:,=()"))
         identifier = Word(alphas,alphanums+'_'+'-')
         identifierOrStar = Or(Literal('*'), identifier)
         integer = Word(nums)
@@ -439,14 +439,14 @@ def readHeaders(filename):
 
                             # Approximate counting of the number of entries covered
                             wildcards = 0
-                            for i in xrange(len(widths)):
+                            for i in range(len(widths)):
                                 fieldWidth = widths[i]
                                 fieldMask = mask[i]
-                                wildcards += sum([(~fieldMask >> shift) & 1 for shift in xrange(fieldWidth)])
+                                wildcards += sum([(~fieldMask >> shift) & 1 for shift in range(fieldWidth)])
                             rangeCount += 2 ** wildcards
 
                     # Attempt to sort the header map by key
-                    keys = hdrMap.keys()
+                    keys = list(hdrMap.keys())
                     keys.sort()
                     hdrList = []
                     for key in keys:
@@ -465,29 +465,32 @@ def readHeaders(filename):
                 (mask, data) = crackKey(hdr, item.next_header_def[0], from_fields)
                 hdr.setDefNxtHdrVal((mask, data))
 
-            if item.maxvar != '':
-                item.maxvar = str(item.maxvar)
-                if item.maxvar not in refCounts:
-                    refCounts[item.maxvar] = RefCount(item.maxvar)
-                hdr.setRefCount(refCounts[item.maxvar])
+            maxvar = getattr(item, 'maxvar', '')
+            if maxvar != '':
+                maxvar = str(maxvar)
+                if maxvar not in refCounts:
+                    refCounts[maxvar] = RefCount(maxvar)
+                hdr.setRefCount(refCounts[maxvar])
 
-            if item.maxval != '':
+            maxval = getattr(item, 'maxval', '')
+            if maxval != '':
                 if not hdr.getRefCount():
                     if item.hdr not in refCounts:
                         refCounts[item.hdr] = RefCount(item.hdr)
                     hdr.setRefCount(refCounts[item.hdr])
-                hdr.getRefCount().setMax(int(item.maxval[0]))
+                hdr.getRefCount().setMax(int(maxval[0]))
 
-            if item.hdr_len != '':
+            hdr_len = getattr(item, 'hdr_len', '')
+            if hdr_len != '':
                 newExp = []
-                if type(item.hdr_len[0]) == str:
-                    newExp.append(item.hdr_len[0])
+                if type(hdr_len[0]) == str:
+                    newExp.append(hdr_len[0])
                 else:
                     #print item.hdr_len[0]
                     #print type(item.hdr_len[0])
                     #print len(item.hdr_len[0])
                     #print len(item.hdr_len.asList())
-                    for exp in item.hdr_len[0]:
+                    for exp in hdr_len[0]:
                         if intRE.match(exp):
                             exp = int(exp)
                             newExp.append(exp)
@@ -496,15 +499,16 @@ def readHeaders(filename):
                         else:
                             newExp.append(exp)
                 hdr.setCalcLength(newExp)
-                
-                #hdr.setMax(int(item.maxval[0]))
 
-            if item.max_len != '':
-                hdr.setMaxLength(int(item.max_len[0]))
+                #hdr.setMax(int(maxval[0]))
+
+            max_len = getattr(item, 'max_len', '')
+            if max_len != '':
+                hdr.setMaxLength(int(max_len[0]))
                 
             #print hdr
         else:
-            print "Error: header '%s' seen multiple times" % item.hdr
+            print("Error: header '%s' seen multiple times" % item.hdr)
             sys.exit(-1)
         #print hdr
 
@@ -543,12 +547,12 @@ def mergeTransitions(headerList, headers):
                 if isinstance(mergedHeader.nextHeader, tuple):
                     mergedHeader.nextHeader = copy.deepcopy(mergedHeader.nextHeader)
                     from_fields = mergedHeader.nextHeader[0]
-                    for i in xrange(len(from_fields)):
+                    for i in range(len(from_fields)):
                         from_fields[i] = '%d-%s' % (pos, from_fields[i])
                     #print from_fields
 
                 if hdr.getRefCount() and nextHdr.getRefCount():
-                    print "Headers being merged both have a reference count. Exiting..."
+                    print("Headers being merged both have a reference count. Exiting...")
                     sys.exit(-1)
                 elif hdr.getRefCount():
                     mergedHeader.setRefCount(hdr.getRefCount())
@@ -556,17 +560,17 @@ def mergeTransitions(headerList, headers):
                     mergedHeader.setRefCount(nextHdr.getRefCount())
 
                 if hdr.calcLength:
-                    print "First header being merged has a calculated length. Unable to merge..."
+                    print("First header being merged has a calculated length. Unable to merge...")
                     sys.exit(-1)
                 elif nextHdr.calcLength:
                     newExp = [hdr.length()[0], '+'] + nextHdr.calcLength
-                    for i in xrange(len(newExp)):
+                    for i in range(len(newExp)):
                         if isinstance(newExp[i], str) and not opRE.match(newExp[i]):
                             newExp[i] = '%d-%s' % (pos, newExp[i])
                     mergedHeader.setCalcLength(newExp)
 
                 if hdr.maxLength:
-                    print "First header being merged has a max length. Unable to merge..."
+                    print("First header being merged has a max length. Unable to merge...")
                     sys.exit(-1)
                 elif nextHdr.maxLength:
                     mergedHeader.setMaxLength(hdr.length()[0] + nextHdr.maxLength)
@@ -583,7 +587,7 @@ def mergeTransitions(headerList, headers):
         if hdr.nextHeader:
             if isinstance(hdr.nextHeader, tuple):
                 hdrList = hdr.nextHeader[1]
-                for i in xrange(len(hdrList)):
+                for i in range(len(hdrList)):
                     nxtHdrName = hdrList[i][1]
                     if nxtHdrName in remapHdrs:
                         hdrList[i] = (hdrList[i][0], remapHdrs[nxtHdrName])
@@ -640,19 +644,19 @@ if __name__ == "__main__":
 
     (headerList, headers) = readHeaders(args.hdr_file)
 
-    print "Headers:",
+    print("Headers:", end=' ')
     for hdr in headerList:
-        print hdr.name,
-    print ""
+        print(hdr.name, end=' ')
+    print("")
 
     for hdr in headerList:
         (l, m, o, oList) = hdr.length()
 
         if not o:
-            print "%s:%d" % (hdr.name, l)
+            print("%s:%d" % (hdr.name, l))
         else:
             if m:
-                print "%s:%d+* (max: %d)" % (hdr.name, l, m)
-                print "  Header fields: %s" % str(hdr.getLengthVarValues())
+                print("%s:%d+* (max: %d)" % (hdr.name, l, m))
+                print("  Header fields: %s" % str(hdr.getLengthVarValues()))
             else:
-                print "%s:%d+*" % (hdr.name, l)
+                print("%s:%d+*" % (hdr.name, l))

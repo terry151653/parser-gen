@@ -8,8 +8,7 @@ from DAGHeaderNode import HeaderNode
 from DAGChainNode import DAGChainNode
 from DAGChain import DAGChain
 
-class OptNode(object):
-    __metaclass__ = ABCMeta
+class OptNode(object, metaclass=ABCMeta):
     """Optimal chain graph node"""
 
     def __init__(self, chain, bpc, cover, fringe):
@@ -25,15 +24,13 @@ class OptNode(object):
         #self._shortStr = "%s@%03d" % (self.dagNode.shortStr(), self.loc)
         #self._cmpName = "%s:%03d" % (self.dagNode.getCmpName(), self.loc)
 
-    def __cmp__(self, other):
-        if type(other) == OptNode:
-            c = cmp(self.chain, other.chain)
-            if c != 0:
-                return c
+    def __eq__(self, other):
+        return isinstance(other, OptNode) and self.chain == other.chain
 
-            return 0
-        else:
-            return -1
+    def __lt__(self, other):
+        if isinstance(other, OptNode):
+            return self.chain < other.chain
+        return NotImplemented
 
     def __str__(self):
         if self._str is None:
@@ -52,4 +49,4 @@ if __name__ == '__main__':
     chain.add(chainNode2)
 
     optNode = OptNode(chain, 8, chain, None)
-    print optNode
+    print(optNode)

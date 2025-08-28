@@ -35,5 +35,5 @@ if __name__ == '__main__':
     hdr.addField('f2', 16)
     hdr.addField('f3', 8)
     node = BarrierNode(hdr, 1, 2)
-    print node
-    print 'Total length:', node.getTotalLength()
+    print(node)
+    print('Total length:', node.getTotalLength())
