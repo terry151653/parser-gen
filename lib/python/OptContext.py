@@ -4,9 +4,8 @@
 
 from abc import ABCMeta, abstractmethod
 
-class OptContext(object):
+class OptContext(object, metaclass=ABCMeta):
     """Optimal chain graph node"""
-    __metaclass__ = ABCMeta
 
     runs = 0
 
@@ -48,5 +47,5 @@ if __name__ == '__main__':
     chain.add(chainNode2)
 
     optNode = OptNode(chain, 8, chain, None)
-    print optNode
+    print(optNode)
 

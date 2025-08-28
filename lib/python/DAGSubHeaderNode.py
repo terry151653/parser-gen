@@ -68,5 +68,5 @@ if __name__ == '__main__':
     hdr.addField('f4', 8)
     hdr.setCalcLength(['f1', '*', 2, '*', 'f3'])
     node = SubHeaderNode(hdr, 1, 1, 4)
-    print "Node:", node
-    print "Decision bytes:", node.getDecisionBytes()
+    print("Node:", node)
+    print("Decision bytes:", node.getDecisionBytes())

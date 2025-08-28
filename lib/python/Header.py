@@ -83,7 +83,7 @@ class Header():
             optional = False
             optionalFields = []
             for field in self.fieldList:
-                if field.width >= 0:
+                if field.width is not None and field.width >= 0:
                     minLen += field.width
                 else:
                     optional = True
@@ -118,7 +118,7 @@ class Header():
         for field in self.fieldList:
             if fieldList != '':
                 fieldList += ', '
-            if field.width >= 0:
+            if field.width is not None and field.width >= 0:
                 fieldList += '%s:%d' % (field.name, field.width)
             else:
                 fieldList += '%s:?' % (field.name)
@@ -201,7 +201,7 @@ class Header():
             # Identify the bytes that need to be extracted
             pos = 0
             for field in self.fieldList + self.pseudofieldList:
-                if field.width > 0:
+                if field.width is not None and field.width > 0:
                     if field.name in fields:
                         endPos = pos + field.width
                         decPos = int((endPos - 1) / 8) + 1
@@ -223,7 +223,7 @@ class Header():
         # Identify the bytes that need to be extracted
         pos = 0
         for field in self.fieldList + self.pseudofieldList:
-            if field.width > 0:
+            if field.width is not None and field.width > 0:
                 if field.name in lengthFields:
                     endPos = pos + field.width
                     decPos = int((endPos - 1) / 8) + 1
@@ -268,16 +268,16 @@ class Header():
         # Identify the bytes that need to be extracted
         pos = 0
         for field in self.fieldList + self.pseudofieldList:
-            if field.width > 0:
+            if field.width is not None and field.width > 0:
                 if field.name in fields:
                     endPos = pos + field.width
                     firstByte = int(pos / 8)
                     lastByte = int((endPos - 1) / 8)
 
                     if len(fieldBytes) > 0 and fieldBytes[-1] == firstByte:
-                        fieldBytes += range(firstByte + 1, lastByte + 1)
+                        fieldBytes += list(range(firstByte + 1, lastByte + 1))
                     else:
-                        fieldBytes += range(firstByte, lastByte + 1)
+                        fieldBytes += list(range(firstByte, lastByte + 1))
 
                     fieldPos[field.name] = (len(fieldBytes) - (lastByte - firstByte) - 1, pos % 8)
 
@@ -307,7 +307,7 @@ class Header():
         mask = 0
         data = 0
 
-        for i in xrange(numFields):
+        for i in range(numFields):
             field = fields[i]
             startPos = fieldPos[field]
             if field in self.fields:
@@ -332,7 +332,7 @@ class Header():
 
         contentMask = [0] * numBytes
         contentData = [0] * numBytes
-        for i in xrange(numBytes):
+        for i in range(numBytes):
             contentMask[i] = int((mask >> (8 * (numBytes - i - 1))) & 0xff)
             contentData[i] = int((data >> (8 * (numBytes - i - 1))) & 0xff)
 
@@ -401,12 +401,12 @@ class Header():
         map1 = []
         map2 = []
         for field in fieldBytes1:
-            for i in xrange(numBytes):
+            for i in range(numBytes):
                 if field == mergedFieldBytes[i]:
                     map1.append(i)
                     break
         for field in fieldBytes2:
-            for i in xrange(numBytes):
+            for i in range(numBytes):
                 if field == mergedFieldBytes[i]:
                     map2.append(i)
                     break
@@ -431,11 +431,11 @@ class Header():
         mask = [0] * numBytes
         data = [0] * numBytes
 
-        for i in xrange(len(content1[0])):
+        for i in range(len(content1[0])):
             mask[map1[i]] |= content1[0][i]
             data[map1[i]] |= content1[1][i]
 
-        for i in xrange(len(content2[0])):
+        for i in range(len(content2[0])):
             mask[map2[i]] |= content2[0][i]
             data[map2[i]] |= content2[1][i]
 
@@ -542,7 +542,7 @@ class Header():
     def getLookupLengthFields(self):
         """Get a merged list of lookup/length fields"""
         fields = self.getLookupFields() + self.getLengthFields()
-        for pos in xrange(len(fields)):
+        for pos in range(len(fields)):
             field = fields[pos]
             firstLoc = self.getFieldByteLocs([field])[0][0]
             fields[pos] = (firstLoc, field)
@@ -565,7 +565,7 @@ class Header():
             term = 0
             calcLen = -1
             valMap = {}
-            for i in xrange(len(vals)):
+            for i in range(len(vals)):
                 valMap[lengthVars[i]] = 0
             while calcLen < maxLen and term < 255:
                 calcLen = self.doLengthCalc(valMap)
@@ -641,7 +641,7 @@ class Header():
         lengths = [x / 8 for x in lengths]
         minLength = min(lengths)
         
-        if desiredLength < minLength:
+        if desiredLength != ANY and desiredLength < minLength:
             desiredLength = ANY
 
         # Walk through the combination of lengths and next headers
@@ -668,7 +668,7 @@ class Header():
                     fieldMatch = self.getFieldByteContentsSingle(fields, vals, fieldBytes, fieldPos)
 
                     # Walk through all of the possible lengths
-                    for i in xrange(len(lengths)):
+                    for i in range(len(lengths)):
                         length = lengths[i]
                         if lenIsVariable:
                             match = self.mergeContents(mergedFieldBytes, map1, map2, fieldMatch, lenContent[i])
@@ -681,7 +681,7 @@ class Header():
             mergedFieldBytes = lenFieldBytes
 
             # Case: no next header
-            for i in xrange(len(lengths)):
+            for i in range(len(lengths)):
                 length = lengths[i]
                 if lenIsVariable:
                     match = lenContent[i]
@@ -698,7 +698,7 @@ class Header():
 
         for match in matches:
             matchStr = ""
-            for i in xrange(numDecBytes):
+            for i in range(numDecBytes):
                 matchStr += "%02x%02x" % (match[0][i], match[1][i])
             matchStrs.add(matchStr)
 
@@ -725,7 +725,7 @@ class Header():
         lengths = [x / 8 for x in lengths]
         minLength = min(lengths)
         
-        if desiredLength < minLength:
+        if desiredLength != ANY and desiredLength < minLength:
             desiredLength = ANY
 
         # Walk through the combination of lengths and next headers
@@ -752,7 +752,7 @@ class Header():
                     fieldMatch = self.getFieldByteContentsSingle(fields, vals, fieldBytes, fieldPos)
 
                     # Walk through all of the possible lengths
-                    for i in xrange(len(lengths)):
+                    for i in range(len(lengths)):
                         length = lengths[i]
                         if lenIsVariable:
                             match = self.mergeContents(mergedFieldBytes, map1, map2, fieldMatch, lenContent[i])
@@ -765,7 +765,7 @@ class Header():
             mergedFieldBytes = lenFieldBytes
 
             # Case: no next header
-            for i in xrange(len(lengths)):
+            for i in range(len(lengths)):
                 length = lengths[i]
                 if lenIsVariable:
                     match = lenContent[i]
@@ -782,7 +782,7 @@ class Header():
 
         for match in matches:
             matchStr = ""
-            for i in xrange(numDecBytes):
+            for i in range(numDecBytes):
                 matchStr += "%02x%02x" % (match[0][i], match[1][i])
             matchStrs.add(matchStr)
 
@@ -803,7 +803,7 @@ class Header():
         lengths = [x / 8 for x in lengths]
         minLength = min(lengths)
         
-        if desiredLength < minLength:
+        if desiredLength != ANY and desiredLength < minLength:
             desiredLength = ANY
 
         # Walk through the combination of lengths and next headers
@@ -830,7 +830,7 @@ class Header():
                     fieldMatch = self.getFieldByteContentsSingle(fields, vals, fieldBytes, fieldPos)
 
                     # Walk through all of the possible lengths
-                    for i in xrange(len(lengths)):
+                    for i in range(len(lengths)):
                         length = lengths[i]
                         if lenIsVariable:
                             match = self.mergeContents(mergedFieldBytes, map1, map2, fieldMatch, lenContent[i])
@@ -843,7 +843,7 @@ class Header():
             mergedFieldBytes = lenFieldBytes
 
             # Case: no next header
-            for i in xrange(len(lengths)):
+            for i in range(len(lengths)):
                 length = lengths[i]
                 if lenIsVariable:
                     match = lenContent[i]
@@ -860,7 +860,7 @@ class Header():
 
         for match in matches:
             matchStr = ""
-            for i in xrange(numDecBytes):
+            for i in range(numDecBytes):
                 matchStr += "%02x%02x" % (match[0][i], match[1][i])
             matchStrs.add(matchStr)
 
@@ -868,7 +868,7 @@ class Header():
 
         newMatches = []
         for match in matchStrs:
-            matchValueByteArray = map(ord, match.decode('hex'))
+            matchValueByteArray = list(bytes.fromhex(match))
             newMatches.append((matchValueByteArray[0::2], matchValueByteArray[1::2]))
 
         return mergedFieldBytes[0:numDecBytes], newMatches
@@ -886,7 +886,7 @@ class Header():
                 lengths = []
                 for lenFieldValSet in lenFieldVals:
                     valMap = {}
-                    for i in xrange(len(lenFields)):
+                    for i in range(len(lenFields)):
                         valMap[lenFields[i]] = lenFieldValSet[i]
                     lengths.append(self.doLengthCalc(valMap))
 
@@ -920,8 +920,8 @@ class Header():
                 bit = fieldWidths[part] - 1
                 while not cFound and bit >= 0:
                     #print part, bit
-                    for lPos in xrange(len(matches)):
-                        for rPos in xrange(lPos + 1, len(matches)):
+                    for lPos in range(len(matches)):
+                        for rPos in range(lPos + 1, len(matches)):
                             (leftMask, leftMatch) = matches[lPos]
                             (rightMask, rightMatch) = matches[rPos]
                             if leftMask == rightMask:
@@ -929,9 +929,9 @@ class Header():
                                 newMask[part] &= (2 ** fieldWidths[part] - 1) ^ (2 ** bit)
                                 #print lPos, rPos, part, bit, leftMask, newMask
                                 leftMatchNew = [leftMatch[i] & newMask[i] for
-                                        i in xrange(numParts)]
+                                        i in range(numParts)]
                                 rightMatchNew = [rightMatch[i] & newMask[i] for
-                                        i in xrange(numParts)]
+                                        i in range(numParts)]
                                 #print leftMatch, leftMatchNew, rightMatch, rightMatchNew
                                 if leftMatchNew == rightMatchNew:
                                     #if cPos not in candidates:
@@ -956,12 +956,12 @@ class Header():
                     newMask = copy.copy(leftMask)
                     newMask[part] &= (2 ** fieldWidths[part] - 1) ^ (2 ** bit)
                     newMatch = [leftMatch[i] & newMask[i] for i in
-                            xrange(numParts)]
+                            range(numParts)]
                     mergedPositions.add(lPos)
                     mergedPositions.add(rPos)
                     mergedMatches.append((newMask, newMatch))
                     merged = True
-            for i in xrange(len(matches)):
+            for i in range(len(matches)):
                 if i not in mergedPositions:
                     mergedMatches.append(matches[i])
             #print "MergedMatches:", mergedMatches
@@ -1004,5 +1004,5 @@ class Header():
 # Basic test code
 if __name__ == '__main__':
     hdr = Header('TestHeader')
-    print hdr
+    print(hdr)
 

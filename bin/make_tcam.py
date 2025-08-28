@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 
+import os
+import sys
+
+# Allow running without installing the library as a package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib", "python"))
+
 from Header import Header, ANY
 from Field import Field
 import string
-import sys
 import re
 import copy
 import math
@@ -16,6 +21,7 @@ from DAGChain import DAGChain
 from DAGChainNode import DAGChainNode
 from OptNode import OptNode
 import time
+from functools import cmp_to_key
 #from LookupChain import LookupChain
 import argparse
 import cProfile
@@ -193,13 +199,13 @@ def optFound(context):
 
 def printBestOpt(context, printEdges=True):
     if len(context.optNodes) > 0:
-        print "opt-algorithm best edge count: %d" % context.bestEdgeCount
-        print "opt-algorithm worst bits-per-cycle: %1.3f   (%1.3f bytes-per-cycle)" % \
-                (context.worstBPC, context.worstBPC / 8)
+        print("opt-algorithm best edge count: %d" % context.bestEdgeCount)
+        print("opt-algorithm worst bits-per-cycle: %1.3f   (%1.3f bytes-per-cycle)" % \
+                (context.worstBPC, context.worstBPC / 8))
         if printEdges:
-            print "opt-algorithm optimal clusters:"
+            print("opt-algorithm optimal clusters:")
             for cluster in sorted(context.bestClusters):
-                print "  %s   (%d edges)" % (cluster, findEdgeCount(context, cluster))
+                print("  %s   (%d edges)" % (cluster, findEdgeCount(context, cluster)))
                 #cnode = DAGChainNode(cluster.chain[0].dagNode, cluster.chain[0].startPos, 0, 0)
                 #coveredClusters = findClustersAndCovers(cnode)
                 #fringe = findFringeWithMinCoverLen(cluster, coveredClusters)
@@ -208,17 +214,17 @@ def printBestOpt(context, printEdges=True):
                 #    print f,
                 #print ""
     else:
-        print "opt-algorithm could not find optimal that met required BPC (%d) or minimum skip amount (%d)" % (globalBPC, minSkip)
+        print("opt-algorithm could not find optimal that met required BPC (%d) or minimum skip amount (%d)" % (globalBPC, minSkip))
 
 def printEntries(context):
     if len(context.optNodes) > 0:
-        print "opt-algorithm TCAM entries:"
+        print("opt-algorithm TCAM entries:")
         for cluster in sorted(context.bestClusters):
-            print "  %s   (%d edges)" % (cluster, findEdgeCount(context, cluster))
+            print("  %s   (%d edges)" % (cluster, findEdgeCount(context, cluster)))
             cnode = cluster.chain[0]
             coveredClusters = findClustersAndCovers(context, cnode)
             for entry in sorted(coveredClusters[cluster]):
-                print "     %s" % entry
+                print("     %s" % entry)
 
 def numStatesNeeded(chain):
     """Identify the number of states needed by a chain"""
@@ -319,7 +325,7 @@ def cmpMaskMatchArray(a, b):
     aLen = len(aMaskArray)
     bLen = len(bMaskArray)
     minLen = min(aLen, bLen)
-    for i in xrange(minLen):
+    for i in range(minLen):
         aMask = aMaskArray[i]
         bMask = bMaskArray[i]
         aMatch = aMatchArray[i]
@@ -327,7 +333,7 @@ def cmpMaskMatchArray(a, b):
 
         aMaskBits = 0
         bMaskBits = 0
-        for bit in xrange(8):
+        for bit in range(8):
             if aMask & (2 ** bit) != 0:
                 aMaskBits += 1
             if bMask & (2 ** bit) != 0:
@@ -351,11 +357,11 @@ def cmpMaskMatchArray(a, b):
     return 0
 
 def cmpMatchBytesStr(a, b):
-    aByteArray = map(ord, a.decode('hex'))
+    aByteArray = list(bytes.fromhex(a))
     aMaskArray = aByteArray[0::2]
     aMatchArray = aByteArray[1::2]
 
-    bByteArray = map(ord, b.decode('hex'))
+    bByteArray = list(bytes.fromhex(b))
     bMaskArray = bByteArray[0::2]
     bMatchArray = bByteArray[1::2]
 
@@ -386,12 +392,12 @@ def allocateState(context, chain, availableState):
             endPos = startPos
         elif arraySpan == statesNeeded and \
                 span == statesNeeded:
-            matchBytes = sorted(findPrecedingMatchBytes(chain), cmpMatchBytesStr)
+            matchBytes = sorted(findPrecedingMatchBytes(chain), key=cmp_to_key(cmpMatchBytesStr))
             if len(matchBytes) > 0 and len(matchBytes[0]) > 0:
-                mask = map(ord, matchBytes[0].decode('hex'))[0::2]
+                mask = list(bytes.fromhex(matchBytes[0]))[0::2]
                 for mb in matchBytes[1:]:
-                    newMask = map(ord, mb.decode('hex'))[0::2]
-                    for i in xrange(len(mask)):
+                    newMask = list(bytes.fromhex(mb))[0::2]
+                    for i in range(len(mask)):
                         mask[i] |= newMask[i]
             else:
                 mask = []
@@ -399,7 +405,7 @@ def allocateState(context, chain, availableState):
             context.allocation[ingress] = availableState[startPos]
             context.matchBytes[ingress] = matchBytes
             context.matchMask[ingress] = mask
-            print "CHAIN:", chain, matchBytes
+            print("CHAIN:", chain, matchBytes)
             del availableState[startPos:endPos + 1]
             return True
         elif span != arraySpan:
@@ -571,7 +577,7 @@ def printTCAMEntry(context, chain):
     covers = findClustersAndCovers(context, cnode)[chain]
     entries = []
     for cover in sorted(covers):
-        print chain, cover
+        print(chain, cover)
 
         lookupValues = cover.getLookupByteValues(False)
         if len(lookupValues) == 0:
@@ -620,7 +626,7 @@ def printTCAMEntry(context, chain):
             nxtLookupStarts.append(0)
 
         skip = cover.totalConsumed()
-        for lookupValueFull in sorted(lookupValues, cmpMatchBytesStr, reverse=True):
+    for lookupValueFull in sorted(lookupValues, key=cmp_to_key(cmpMatchBytesStr), reverse=True):
             stateInBytes = lookupValueFull[0:baseMatchByteLen]
             if successorMatchByteLen > 0:
                 stateOutBytes = lookupValueFull[-successorMatchByteLen:]
@@ -628,8 +634,8 @@ def printTCAMEntry(context, chain):
                 stateOutBytes = ''
 
             #print "SOBi:", stateOutBytes
-            stateOutBytes = map(ord, stateOutBytes.decode('hex'))
-            for i in xrange(len(successorMatchMask)):
+            stateOutBytes = list(bytes.fromhex(stateOutBytes))
+            for i in range(len(successorMatchMask)):
                 stateOutBytes[i*2] &= successorMatchMask[i]
                 stateOutBytes[i*2+1] &= successorMatchMask[i]
             stateOutBytes = ''.join(["%02x" % x for x in stateOutBytes])
@@ -638,45 +644,45 @@ def printTCAMEntry(context, chain):
 
             prevMatchBytes = context.matchBytes[chain.ingress()]
             if len(prevMatchBytes) == 0:
-                print "YUP"
+                print("YUP")
                 prevMatchBytes = set('')
-            print "cover: %s   lookupValue:%s   stateInBytes: %s   prevMatchBytes: %s" % (cover, lookupValueFull, stateInBytes, prevMatchBytes)
-            stateInBytesAsArray = map(ord, stateInBytes.decode('hex'))
+            print("cover: %s   lookupValue:%s   stateInBytes: %s   prevMatchBytes: %s" % (cover, lookupValueFull, stateInBytes, prevMatchBytes))
+            stateInBytesAsArray = list(bytes.fromhex(stateInBytes))
             stateInBytesMask = stateInBytesAsArray[0::2]
             stateInBytesMatch = stateInBytesAsArray[1::2]
             for pmb in prevMatchBytes:
-                pmbAsArray = map(ord, pmb.decode('hex'))
+                pmbAsArray = list(bytes.fromhex(pmb))
                 pmbMask = pmbAsArray[0::2]
                 pmbMatch = pmbAsArray[1::2]
 
                 # Check if the masks are compatible
                 compat = True
-                for i in xrange(len(pmbMask)):
+                for i in range(len(pmbMask)):
                     compat &= (stateInBytesMask[i] & pmbMask[i]) ^ stateInBytesMask[i] == 0
                     compat &= (stateInBytesMask[i] & pmbMatch[i]) == (stateInBytesMask[i] & stateInBytesMatch[i])
 
-                print "COMPAT:", compat, stateInBytes, pmb
+                print("COMPAT:", compat, stateInBytes, pmb)
 
                 if not compat:
                     continue
 
                 lookupValue = lookupValueFull[baseMatchByteLen:]
-                print "cover: %s   lookupValue:%s   stateInBytes (pmb): %s   stateOutBytes: %s" % (cover, lookupValue, pmb, stateOutBytes)
+                print("cover: %s   lookupValue:%s   stateInBytes (pmb): %s   stateOutBytes: %s" % (cover, lookupValue, pmb, stateOutBytes))
                 stateIn = baseMatchBytes.index(pmb) + baseState
                 stateOut = successorMatchBytes.index(stateOutBytes) + successorState
 
                 #print cover, cover.getLookupByteValues(False)
-                mask = [0 for x in xrange(lookups * lookupWidth)]
-                match = [0 for x in xrange(lookups * lookupWidth)]
-                lookupValueByteArray = map(ord, lookupValue.decode('hex'))
-                for i in xrange(len(lookupValueByteArray) / 2):
+                mask = [0 for x in range(lookups * lookupWidth)]
+                match = [0 for x in range(lookups * lookupWidth)]
+                lookupValueByteArray = list(bytes.fromhex(lookupValue))
+                for i in range(len(lookupValueByteArray) // 2):
                     dest = lookupMap[i]
                     mask[dest] = lookupValueByteArray[i*2]
                     match[dest] = lookupValueByteArray[i*2+1]
 
                 stateMask = []
                 stateMatch = []
-                for i in xrange(stateBytes):
+                for i in range(stateBytes):
                     maskVal = 255
                     if i == stateBytes - 1:
                         maskVal = 2 ** (stateBits % 8) - 1
@@ -745,7 +751,7 @@ def printTCAMEntry(context, chain):
                         base += node.consumed
                         #print "EXT:", nodeName, nodeExtractBytes
                     #entryStr += '   Extract: [%s]' % (', '.join('(%d, %d)' % (src, dst) for (src, dst) in coverExtractBytes))
-                    coverExtractBytes.extend([(0, 0) for x in xrange(extractBytes - len(coverExtractBytes))])
+                    coverExtractBytes.extend([(0, 0) for x in range(extractBytes - len(coverExtractBytes))])
                     entryStr += '   Extract: [%s]' % (', '.join(extractFmtStr % (src, dst) for (src, dst) in coverExtractBytes))
                     #print "EXT:", coverExtractBytes
 
@@ -764,7 +770,7 @@ def printTCAMEntry(context, chain):
                             starts.append((context.foundHdrNum[nodeStr], pos, len(context.fieldPos[nodeStr])))
                     pos += node.consumed
                 #entryStr += '   Hdr-Starts: [%s]' % (', '.join('(%d, %d)' % (hdr, pos) for (hdr, pos) in starts))
-                starts.extend([(0, 0, 0) for x in xrange(maxHdrs - len(starts))])
+                starts.extend([(0, 0, 0) for x in range(maxHdrs - len(starts))])
                 entryStr += '   Hdr-Starts: [%s]' % (', '.join(hdrStartFmtStr % (pos, hdr, length) for (hdr, pos, length) in starts))
 
                 #print "  %s   # Match: %s   Nxt-State: %d" % (entryStr, cover, stateOut)
@@ -779,9 +785,9 @@ def printTCAMEntry(context, chain):
             if wildcardMatch:
                 break
 
-    for (mask, match, entryStr, commentStr) in sorted(entries, cmpEntry):
+    for (mask, match, entryStr, commentStr) in sorted(entries, key=cmp_to_key(cmpEntry)):
         if printTCAM:
-            print "  %s     # %s" % (entryStr, commentStr)
+            print("  %s     # %s" % (entryStr, commentStr))
         if saveTCAM:
             tcamFile.write("  %s     # %s\n" % (entryStr, commentStr))
 
@@ -836,7 +842,7 @@ def printTCAMEntries(context):
         #    print cluster, isNextNodeInSameHdr(context, cluster)
 
         # Allocate state to each cluster
-        availableState = range(tcamMaxState)
+        availableState = list(range(tcamMaxState))
         context.allocation = {}
         context.matchBytes = {}
         context.matchMask = {}
@@ -846,7 +852,7 @@ def printTCAMEntries(context):
                 if cluster == firstCluster:
                     continue
                 if not allocateState(context, cluster, availableState):
-                    print "Insufficient state available for table"
+                    print("Insufficient state available for table")
                     return
         #for cluster in sorted(context.bestClusters):
         #    #print cluster, context.allocation[cluster.ingress()]
@@ -863,7 +869,7 @@ def printTCAMEntries(context):
         if saveTCAM:
             tcamFile = open(dstFileName, 'w')
         if printTCAM:
-            print "tcam-entries:"
+            print("tcam-entries:")
 
         firstNode = context.dagOrderList[0]
         for firstChain in context.bestClusters:
@@ -884,7 +890,7 @@ def printTCAMEntries(context):
             firstLookupStarts.append(0)
         firstLookupStr = 'First-Lookup: [%s]' % (', '.join('%d' % val for val in firstLookupStarts))
         if printTCAM:
-            print "  %s" % firstLookupStr
+            print("  %s" % firstLookupStr)
         if saveTCAM:
             tcamFile.write("  %s\n" % firstLookupStr)
 
@@ -1053,19 +1059,19 @@ def exploreGraph(context, cnode):
         #print "RS-Size:", len(resultSets), lenSum
 
     if debug:
-        print "exploreGraph: N=%s" % (cnode)
-        print "  Results:"
+        print("exploreGraph: N=%s" % (cnode))
+        print("  Results:")
         for (clusters, byteCount, cyc) in results:
             #print "  Result:"
             for cluster in sorted(clusters):
-                print "    %s" % cluster
-        print ""
+                print("    %s" % cluster)
+        print("")
         resultCount = 0
         for (clusters, byteCount, cyc) in results:
             resultCount += len(clusters)
-        print "  ResultCount:", resultCount
-        print "  Counts: %d   Combs: %d" % (counts, combs)
-        print ""
+        print("  ResultCount:", resultCount)
+        print("  Counts: %d   Combs: %d" % (counts, combs))
+        print("")
 
     #global resultsRet
     #resultsRet += 1
@@ -1253,7 +1259,7 @@ def findClustersAndCovers(context, cnode):
     #        print "  ", cover
     #print ""
     context.coveredClustersFromNode[cnode] = coveredClusters
-    context.clustersFromNode[cnode] = sorted(coveredClusters.keys())
+    context.clustersFromNode[cnode] = sorted(coveredClusters.keys(), key=lambda c: c.shortStr())
 
     return coveredClusters
 
@@ -1380,16 +1386,17 @@ def findCoveredClusters(clusters):
     #    for r in sorted(reachableNewHdr[subchain]):
     #        print "      ", r
     #sys.exit(1)
-    for cluster in reachableNewHdr.keys():
+    for cluster in list(reachableNewHdr.keys()):
         #print "CLU:", cluster
         subchains = cluster.findLookupSubchains()
 
         # Calculate the set of nodes reachable from the current cluster
         targets = set()
-        for subchain in sorted(subchains):
+        subchains_sorted = sorted(subchains, key=lambda c: c.shortStr())
+        for subchain in subchains_sorted:
             #print "Add:", subchain
             targets.update(reachableNewHdr[subchain])
-        targets.update(reachableSameHdr[subchains[-1]])
+        targets.update(reachableSameHdr[subchains_sorted[-1]])
         #for t in sorted(targets):
         #    print "T:", t
 
@@ -1496,11 +1503,11 @@ def findReachable(chains,
     reachableNewHdr = dict()
     reachableSameHdr = dict()
     #for chain in chains:
-    for chain in sorted(chains):
+    for chain in sorted(chains, key=lambda c: c.shortStr()):
         #print "CH:", chain
         lookupSubchains = chain.findLookupSubchains()
         #for lc in lookupSubchains:
-        for lc in sorted(lookupSubchains):
+        for lc in sorted(lookupSubchains, key=lambda c: c.shortStr()):
             #print "   LC:", lc
             #continue
             if lc not in reachableNewHdr:
@@ -1663,7 +1670,7 @@ def buildDAG(headerList, headers):
 def addPad(dagNodes):
     """Add pad nodes to a DAG"""
     newNodes = {}
-    for key in dagNodes.keys():
+    for key in list(dagNodes.keys()):
         node = dagNodes[key]
         lengths = node.getLengths()
         if len(lengths) > 1: # or lengths[0] > maxSkip:
@@ -1702,36 +1709,36 @@ estReportTime = 10
 countEstimated = False
 
 def printParams():
-    print "TCAM entry evaluation"
-    print "====================="
-    print ""
-    print "Header file: %s" % hfile
-    print "Data rate: %1.3f Gb/s" % dataRate
-    print "Clock frequency: %1.3f GHz" % clkFreq
-    print "Required processing rate: %1.3f bpc" % globalBPC
-    print "Lookups: %d" % lookups
-    print "Lookup width: %d bytes" % lookupWidth
-    print "Maximum skip: %d bytes" % maxSkip
-    print "Minimum skip: %d bytes" % minSkip
-    print "First lookup at zero: %s" % firstLookupAtZero
-    print "Window size: %d bytes" % windowSize
-    print "Perform extraction: %s " % extract
+    print("TCAM entry evaluation")
+    print("=====================")
+    print("")
+    print("Header file: %s" % hfile)
+    print("Data rate: %1.3f Gb/s" % dataRate)
+    print("Clock frequency: %1.3f GHz" % clkFreq)
+    print("Required processing rate: %1.3f bpc" % globalBPC)
+    print("Lookups: %d" % lookups)
+    print("Lookup width: %d bytes" % lookupWidth)
+    print("Maximum skip: %d bytes" % maxSkip)
+    print("Minimum skip: %d bytes" % minSkip)
+    print("First lookup at zero: %s" % firstLookupAtZero)
+    print("Window size: %d bytes" % windowSize)
+    print("Perform extraction: %s " % extract)
     if extract:
-        print "Extract: %d bytes" % extractBytes
+        print("Extract: %d bytes" % extractBytes)
     else:
-        print "Maximum headers/cycle: %d" % maxHdrs
-    print ""
-    print "Evaluations:"
-    print "  Multiple-parent merge: %s" % multParent
-    print "  Multiple-parent merge second pass: %s" % multParentRetry
-    print "  Parallel edge barriers: %s" % parallelEdge
-    print "  Combine clusters different by instance number: %s" % instMerge
-    print "  Ternary state matching: %s" % ternMatchOnState
-    print ""
-    print "Output:"
-    print "  Print TCAM entries: %s" % printTCAM
-    print "  Save TCAM entries: %s" % saveTCAM
-    print "  TCAM maximum state: %d" % tcamMaxState
+        print("Maximum headers/cycle: %d" % maxHdrs)
+    print("")
+    print("Evaluations:")
+    print("  Multiple-parent merge: %s" % multParent)
+    print("  Multiple-parent merge second pass: %s" % multParentRetry)
+    print("  Parallel edge barriers: %s" % parallelEdge)
+    print("  Combine clusters different by instance number: %s" % instMerge)
+    print("  Ternary state matching: %s" % ternMatchOnState)
+    print("")
+    print("Output:")
+    print("  Print TCAM entries: %s" % printTCAM)
+    print("  Save TCAM entries: %s" % saveTCAM)
+    print("  TCAM maximum state: %d" % tcamMaxState)
 
 def sortDAG(context):
     # Identify the parents
@@ -1765,7 +1772,7 @@ def sortDAG(context):
     while len(pending) > 0:
         curr = pending
         pending = set()
-        for node in sorted(curr):
+        for node in sorted(curr, key=lambda n: n.shortStr()):
             context.dagOrder[node] = depth
             context.dagOrderList.append(node)
             node.setTopo(depth, offset)
@@ -1830,15 +1837,15 @@ def cloneDAG(head):
 def findDAGNodes(dag, nodes):
     # Find the requested nodes
     nodeCount = len(nodes)
-    isFound = [False for node in xrange(nodeCount)]
-    foundNodes = [None for node in xrange(nodeCount)]
+    isFound = [False for node in range(nodeCount)]
+    foundNodes = [None for node in range(nodeCount)]
     toFind = nodeCount
 
     pending = [dag]
     seen = set(pending)
     while len(pending) > 0 and toFind:
         node = pending.pop(0)
-        for i in xrange(nodeCount):
+        for i in range(nodeCount):
             if not isFound[i]:
                 if nodes[i] == node:
                     foundNodes[i] = node
@@ -1964,7 +1971,7 @@ def printDAG(dag):
     seen = set(pending)
     while len(pending) > 0:
         node = pending.pop(0)
-        for nxt in sorted(node.nxt):
+        for nxt in sorted(node.nxt, key=lambda n: '' if n is None else n.shortStr()):
             if nxt and nxt not in seen:
                 seen.add(nxt)
                 pending.append(nxt)
@@ -1977,16 +1984,16 @@ def printDAG(dag):
             maxLen = strLen
 
     formatStr = '%%%ds   %%s' % maxLen
-    print formatStr % ('NODE', 'CHILDREN')
-    for node in sorted(seen):
+    print(formatStr % ('NODE', 'CHILDREN'))
+    for node in sorted(seen, key=lambda n: n.shortStr()):
         childStrs = []
-        for nxt in sorted(node.nxt):
+        for nxt in sorted(node.nxt, key=lambda n: '' if n is None else n.shortStr()):
             if nxt:
                 childStrs.append(nxt.shortStr())
             else:
                 childStrs.append('--')
         children = ', '.join(childStrs)
-        print formatStr % (node.shortStr(), children)
+        print(formatStr % (node.shortStr(), children))
         #nodeStr = '%s -> [' % node.shortStr()
         #firstChild = True
         #for nxt in sorted(node.nxt):
@@ -1999,7 +2006,7 @@ def printDAG(dag):
         #    firstChild = False
         #nodeStr += ']'
         #print nodeStr
-    print ""
+    print("")
 
 def printDAGParents(context):
     # Work out the length of the longest shortStr
@@ -2010,22 +2017,22 @@ def printDAGParents(context):
             maxLen = strLen
 
     formatStr = '%%%ds   %%s' % maxLen
-    print formatStr % ('NODE', 'PARENT')
+    print(formatStr % ('NODE', 'PARENT'))
     for node in ccontext.dagOrderList:
         if len(ccontext.dagParents[node]) > 0:
-            parentStr = ', '.join([parent.shortStr() for parent in sorted(ccontext.dagParents[node])])
+            parentStr = ', '.join([parent.shortStr() for parent in sorted(ccontext.dagParents[node], key=lambda n: n.shortStr())])
         else:
             parentStr = '--'
-        print formatStr % (node.shortStr(), parentStr)
+        print(formatStr % (node.shortStr(), parentStr))
         #for parent in ccontext.dagParents[node]:
         #    print parent.shortStr(),
         #print ""
 def runExplore(context):
     baseNode = DAGChainNode(context.dag, 0, 0, 0)
 
-    startTime = time.clock()
+    startTime = time.perf_counter()
     results = exploreGraph(context, baseNode)
-    endTime = time.clock()
+    endTime = time.perf_counter()
 
     timeDelta = endTime - startTime
 
@@ -2034,9 +2041,9 @@ def runExplore(context):
 def runOpt(context):
     baseNode = DAGChainNode(context.dag, 0, 0, 0)
 
-    startTime = time.clock()
+    startTime = time.perf_counter()
     opt(context, baseNode, globalBPC)
-    endTime = time.clock()
+    endTime = time.perf_counter()
 
     (context.worstBits, context.worstCyc) = findOptNodes(context, baseNode, globalBPC)
 
@@ -2053,7 +2060,7 @@ def runExploreAndOpt(context,
     expTime = runExplore(context)
 
     if showExpTime:
-        print "Graph exploration time: %1.03fs" % expTime
+        print("Graph exploration time: %1.03fs" % expTime)
 
     if printPathsToExplore:
         baseNode = DAGChainNode(context.dag, 0, 0, 0)
@@ -2064,20 +2071,20 @@ def runExploreAndOpt(context,
                 exp += 3
                 pathCount /= 1000
             pathCount /= 1000.0
-            print "Total paths to explore: %1.3f x 10^%d" % (pathCount, exp)
+            print("Total paths to explore: %1.3f x 10^%d" % (pathCount, exp))
         else:
-            print "Total paths to explore: %d" % pathCount
+            print("Total paths to explore: %d" % pathCount)
 
     optTime = runOpt(context)
 
     if showOptTime:
-        print "opt-algorithm runtime: %1.03fs" % optTime
-        print "opt-algorithm evaluation steps: %d" % context.count
+        print("opt-algorithm runtime: %1.03fs" % optTime)
+        print("opt-algorithm evaluation steps: %d" % context.count)
 
     if printResults:
         printBestOpt(context, printEdges)
 
-    print "\n"
+    print("\n")
 
 def combineClustersByInst(context):
     """
@@ -2118,7 +2125,7 @@ def combineClustersByInst(context):
                     pos += 1
 
     context.bestClusters = set()
-    for clusters in clustersByHdrPos.values():
+    for clusters in list(clustersByHdrPos.values()):
         context.bestClusters.update(clusters)
     context.bestEdgeCount = newEdgeCount
     #for (cnode, cluster) in context.optNodes:
@@ -2172,7 +2179,7 @@ def compareChainIgnoreInst(chainA, chainB, matchExactly=False):
     if aLen == 0 and bLen == 0:
         return chainA
 
-    for pos in xrange(min(len(chainA.chain), len(chainB.chain))):
+    for pos in range(min(len(chainA.chain), len(chainB.chain))):
         aNode = chainA.chain[pos]
         aHdrName = aNode.dagNode.getName()
         aPos = aNode.startPos
@@ -2220,7 +2227,7 @@ def updateDAGNodes(context):
                 seen.add(nxt)
 
 def tryDAGBarrier(context, node):
-    print "Procesing node '%s'   (Parents: %d)..." % (node, parentCount)
+    print("Procesing node '%s'   (Parents: %d)..." % (node, parentCount))
     posList = node.getDecisionBytes()
 
     # Trim temporarily
@@ -2232,13 +2239,13 @@ def tryDAGBarrier(context, node):
     posList.reverse()
     if 0 not in posList:
         posList.append(0)
-    print "Barrier locations:", posList
+    print("Barrier locations:", posList)
 
     roundBestContext = context
     roundBestLoc = None
     for barPos in posList:
     #for barPos in [0,4,20,40]:
-        print "Considering %d..." % barPos
+        print("Considering %d..." % barPos)
 
         newContext = OptContext()
         newContext.dag = cloneDAG(context.dag)
@@ -2259,23 +2266,23 @@ def tryDAGBarrier(context, node):
 def tryDAGParallelEdgeBarrier(context, node, nxtNode):
     edges = node.hdr.getDecisionCombos(
             nodeLen, nxtNode.hdr.name, nodeLen)
-    print "Processing edges between %s and %s (edges: %d)" % (node, nxtNode, edges)
+    print("Processing edges between %s and %s (edges: %d)" % (node, nxtNode, edges))
 
     posList = nxtNode.getDecisionBytes()
     # Trim temporarily
     if len(posList) > 0 and posList[-1] >= node.getLength():
         while len(posList) > 0 and posList[-1] > nxtNode.getLength():
-            print "Popping:", posList.pop()
+            print("Popping:", posList.pop())
     elif nxtNode.getLength() not in posList:
         posList.append(nxtNode.getLength())
     posList.reverse()
     if 0 not in posList:
         posList.append(0)
-    print "Barrier locations:", posList
+    print("Barrier locations:", posList)
     roundBestContext = context
     roundBestLoc = None
     for barPos in posList:
-        print "Considering %d..." % barPos
+        print("Considering %d..." % barPos)
 
         newContext = OptContext()
         newContext.dag = cloneDAG(context.dag)
@@ -2319,7 +2326,7 @@ def allocateResultVectorEntries(context):
 
             extractBytes = node.hdr.getExtractBytes()
             fieldPos = extractPos[node.hdr.name] + (node.inst - 1) * extractOffset[node.hdr.name]
-            extractBytes = zip(extractBytes, xrange(fieldPos, fieldPos + len(extractBytes)))
+            extractBytes = list(zip(extractBytes, list(range(fieldPos, fieldPos + len(extractBytes)))))
             context.fieldPos[nodeName] = extractBytes
 
             hdrNum += 1
@@ -2328,9 +2335,9 @@ def allocateResultVectorEntries(context):
     context.hdrCount = hdrNum + 1
     context.maxDest = fieldPos + 1
 
-    print "header-numbers:"
+    print("header-numbers:")
     for node in hdrs:
-        print "  %s: %d" % (node, context.foundHdrNum[node])
+        print("  %s: %d" % (node, context.foundHdrNum[node]))
 
 if __name__ == "__main__":
     my_parser = argparse.ArgumentParser('Read headers from a given file')
@@ -2451,7 +2458,7 @@ if __name__ == "__main__":
     stateWidth10 = int(math.ceil(math.log10(tcamMaxState)))
 
     if minSkip > 0:
-        print "Stopping: minSkip parameter does not work correctly. Specified: %d" % minSkip
+        print("Stopping: minSkip parameter does not work correctly. Specified: %d" % minSkip)
         sys.exit(1)
 
     printParams()
@@ -2472,13 +2479,13 @@ if __name__ == "__main__":
     sortDAG(ccontext)
     printDAGParents(ccontext)
 
-    print "\n\n\n"
-    print "Initial run:"
+    print("\n\n\n")
+    print("Initial run:")
     runExploreAndOpt(ccontext, showExpTime=True, showOptTime=True, printPathsToExplore=True, printEdges=True)
     bestContext = ccontext
 
     if multParent:
-        print "\nAttempting optimization of nodes with multiple parents...\n"
+        print("\nAttempting optimization of nodes with multiple parents...\n")
 
         barrierLocs = []
         unprocHeaders = []
@@ -2494,30 +2501,30 @@ if __name__ == "__main__":
                 unprocHeaders.append(node)
 
         if multParentRetry and len(unprocHeaders) > 0:
-            print "Retrying:",
+            print("Retrying:", end=' ')
             for h in unprocHeaders:
-                print h,
-            print ""
+                print(h, end=' ')
+            print("")
             for node in unprocHeaders:
                 bestContext, bestLoc = tryDAGBarrier(bestContext, node)
                 if bestLoc is not None:
                     barrierLocs.append((node, bestLoc))
 
-        print ""
-        print "Multi-parent optimization results:"
-        print "----------------------------------"
+        print("")
+        print("Multi-parent optimization results:")
+        print("----------------------------------")
         printBestOpt(bestContext)
-        print ""
+        print("")
         if len(barrierLocs) > 0:
-            print "Barrier locations:"
+            print("Barrier locations:")
             for (node, loc) in barrierLocs:
-                print "  %s: %d" % (node, loc)
+                print("  %s: %d" % (node, loc))
         else:
-            print "Multi-parent barriers do not improve results"
-        print "\n\n\n"
+            print("Multi-parent barriers do not improve results")
+        print("\n\n\n")
 
     if parallelEdge:
-        print "\nAttempting optimization of parallel edges to downstream nodes...\n"
+        print("\nAttempting optimization of parallel edges to downstream nodes...\n")
         # Insert barriers between adjacent nodes when multiple patterns cause the transition
         parallelLocs = []
         for node in ccontext.dagOrderList:
@@ -2530,33 +2537,33 @@ if __name__ == "__main__":
                         if bestLoc is not None:
                             parallelLocs.append((node, nxt, bestLoc))
 
-        print ""
-        print "Parallel edge optimization results:"
-        print "-----------------------------------"
+        print("")
+        print("Parallel edge optimization results:")
+        print("-----------------------------------")
         printBestOpt(bestContext)
-        print ""
+        print("")
         if len(parallelLocs) > 0:
-            print "Parallel edge barrier locations:"
+            print("Parallel edge barrier locations:")
             for (node, nxtNode, loc) in parallelLocs:
-                print "  %s -> %s: %d" % (node, nxtNode, loc)
+                print("  %s -> %s: %d" % (node, nxtNode, loc))
         else:
-            print "Parallel edge barriers do not improve results"
-        print "\n\n\n"
+            print("Parallel edge barriers do not improve results")
+        print("\n\n\n")
 
 
     if instMerge:
-        print "\nAttempting combining clusters that differ only by instance number...\n"
+        print("\nAttempting combining clusters that differ only by instance number...\n")
         combineClustersByInst(bestContext)
 
-    print ""
-    print "Final optimization results:"
-    print "---------------------------"
+    print("")
+    print("Final optimization results:")
+    print("---------------------------")
     printDAG(bestContext.dag)
     printBestOpt(bestContext)
-    print ""
+    print("")
     printEntries(bestContext)
     if printTCAM or saveTCAM:
-        print ""
+        print("")
         allocateResultVectorEntries(bestContext)
-        print ""
+        print("")
         printTCAMEntries(bestContext)

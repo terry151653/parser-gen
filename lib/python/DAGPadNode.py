@@ -41,5 +41,5 @@ if __name__ == '__main__':
     hdr = Header.Header('TestHeader')
     hdr.addField('test', 8)
     node = PadNode(hdr, 1, 4)
-    print node
-    print 'Total length:', node.getTotalLength()
+    print(node)
+    print('Total length:', node.getTotalLength())

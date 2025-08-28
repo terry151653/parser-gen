@@ -118,31 +118,16 @@ class DAGChainNode(object):
         #if isinstance(other, DAGChainNode):
         return self.__hash__() == other.__hash__()
 
-    def __cmp__(self, other):
-        #if isinstance(other, DAGChainNode):
-        if type(other) == DAGChainNode:
-            if self.__hash__() == other.__hash__():
-                return 0
-
-            c = cmp(self.dagNode, other.dagNode)
-            if c != 0:
-                return c
-
-            c = cmp(self.startPos, other.startPos)
-            if c != 0:
-                return c
-
-            c = cmp(self.consumed, other.consumed)
-            if c != 0:
-                return c
-
-            c = cmp(self.read, other.read)
-            if c != 0:
-                return c
-
-            return 0
-        else:
-            return -1
+    def __lt__(self, other):
+        if isinstance(other, DAGChainNode):
+            if self.dagNode != other.dagNode:
+                return self.dagNode < other.dagNode
+            if self.startPos != other.startPos:
+                return self.startPos < other.startPos
+            if self.consumed != other.consumed:
+                return self.consumed < other.consumed
+            return self.read < other.read
+        return NotImplemented
 
     def unconsumed(self):
         return self.dagNode.getLength() - self.startPos - self.consumed
@@ -186,8 +171,8 @@ if __name__ == '__main__':
     chainNode1 = DAGChainNode(dagNode1, 1, 4, 4)
     chainNode2 = DAGChainNode(dagNode1, 1, 4, 4)
     chainNode3 = DAGChainNode(dagNode2, 1, 4, 4)
-    print "Chain node 1:", chainNode1
-    print "Chain node 2:", chainNode2
-    print "Chain node 3:", chainNode3
-    print "Node 1 == Node 2?", chainNode1 == chainNode2
-    print "Node 1 == Node 3?", chainNode1 == chainNode3
+    print("Chain node 1:", chainNode1)
+    print("Chain node 2:", chainNode2)
+    print("Chain node 3:", chainNode3)
+    print("Node 1 == Node 2?", chainNode1 == chainNode2)
+    print("Node 1 == Node 3?", chainNode1 == chainNode3)
